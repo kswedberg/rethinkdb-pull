@@ -5,6 +5,12 @@
 * Downloads a compressed file containing a database from the server
 * Extracts the file and imports the tables into a local database
 
+## Requirements
+
+* rethinkdb: The Python version (`sudo pip install rethinkdb`)
+* node.js >= 4
+*
+
 ## Usage
 
 Put the following in a file within your project (e.g. `pull.js`):
