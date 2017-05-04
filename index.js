@@ -54,7 +54,7 @@ let setImportArgs = (settings, files) => {
 
     let args = [
       'import',
-      '-f', path.join(settings.tempDir, file),
+      '-f', file,
       '--password-file', settings.localPwdFile,
       '--table', `${db}.${table}`,
       '--format', 'json',
