@@ -3,7 +3,7 @@
 * Prompts for local and remote db/password info if none provided in `options` argument or `.env` file
 * Uses ssh-tunnel to connect to a remote RethinkDB server
 * Downloads a compressed file containing a database from the server
-* Extracts the file and imports the tables into a local database
+* Extracts the file and imports the tables into a local database, overwriting existing data unless `merge` option is `true`
 
 ## Requirements
 
@@ -53,6 +53,7 @@ let settings = {
   tempDir: '/tmp',
   includeTables: [],
   excludeTables: [],
+  merge: false, // When true, does not drop the table before importing.
   // See https://github.com/agebrock/tunnel-ssh for details on tunnel settings:
   tunnel: {
     username: undefined,

@@ -3,6 +3,7 @@ const path = require('path');
 const spawn = require('child_process').spawn;
 const Promises = require('bluebird');
 const fs = require('fs-extra');
+const r = require('rethinkdb');
 const inquirer = require('inquirer');
 const chalk = require('chalk');
 const glob = require('globby');
@@ -12,9 +13,9 @@ dotenv.config();
 var argv = require('yargs')
 .option('task', {
   alias: 't',
-  // type: 'boolean',
   default: 'pull'
 }).argv;
+
 
 let mergeOptions = (opts, answers) => {
   opts.remoteDb = opts.remoteDb || answers.remoteDb || process.env.REMOTE_DB_NAME;
@@ -36,7 +37,6 @@ let mergeOptions = (opts, answers) => {
 
   return opts;
 };
-
 
 let setImportArgs = (settings, files) => {
   let filtered = [...files];
@@ -118,6 +118,23 @@ let dump = (tnl, settings) => {
   });
 };
 
+let dropOrMergeTable = (connected, table) => {
+  if (argv.merge) {
+    return Promises.try(() => {
+      return console.log(`\nPreparing to merge data into ${table} table…`);
+    });
+  }
+
+  return connected
+  .then((conn) => {
+    return r.tableDrop(table)
+    .run(conn)
+    .then(function(cursor) {
+      return console.log(chalk.yellow(`\nRemoved ${table} table`));
+    });
+  });
+};
+
 let restore = (settings) => {
   const decompress = require('decompress');
   const decompressTargz = require('decompress-targz');
@@ -125,44 +142,58 @@ let restore = (settings) => {
   return decompress(settings.archive, settings.tempDir, {
     plugins: [decompressTargz()]
   }).then(() => {
-    console.log(`Decompressed ${settings.archive}`);
+    console.log(chalk.cyan(`Decompressed ${settings.archive}`));
   })
   .then(() => {
     return glob([
       path.join(settings.tempDir, '**/*.json')
     ])
     .then((files) => {
+      let connected = r.connect({
+        db: settings.localDb,
+        password: settings.localPwd
+      });
+
       return Promises.try(() => {
         return setImportArgs(settings, files);
       })
       .each(({args, table, db}) => {
+        return dropOrMergeTable(connected, table)
+        .then(() => {
+          let rdb = spawn('rethinkdb', args);
 
-        let rdb = spawn('rethinkdb', args);
+          return new Promise(function(resolve, reject) {
+            rdb.stdout.on('data', (data) => {
+              let line = data.toString();
 
-        return new Promise(function(resolve, reject) {
-          rdb.stdout.on('data', (data) => {
-            let line = data.toString();
+              process.stdout.write(line);
+            });
 
-            process.stdout.write(line);
-          });
+            rdb.stderr.on('data', (data) => {
+              console.log('stderr:', chalk.red(data.toString()));
+            });
 
-          rdb.stderr.on('data', (data) => {
-            console.log('stderr:', chalk.red(data.toString()));
-          });
+            rdb.on('close', (code) => {
 
-          rdb.on('close', (code) => {
-
-            if (code) {
-              reject(code);
-            } else {
-              console.log(chalk.cyan(`Imported ${table} into ${db}`));
-              resolve();
-            }
+              if (code) {
+                reject(code);
+              } else {
+                console.log(chalk.cyan(`Imported ${table} into ${db}`));
+                resolve();
+              }
+            });
           });
         });
       })
       .then(() => {
-        console.log(chalk.green('Updates complete'));
+        connected.then((conn) => {
+          conn.close();
+          console.log(chalk.green('Updates complete'));
+        })
+        .catch((err) => {
+          console.error('Uh oh!');
+          console.error(err);
+        });
       });
     });
   });
@@ -171,12 +202,28 @@ let restore = (settings) => {
 let clean = (settings) => {
   fs.remove(settings.tempDir)
   .then(() => {
-    console.log(`Removed ${settings.tempDir}`);
+    console.log(`Housekeeping: Removed ${settings.tempDir}`);
   });
 };
 
 let tasks = {
+  test: (settings) => {
 
+    r.connect({
+      db: settings.localDb,
+      password: settings.localPwd
+    })
+    .then((connection) => {
+      r.table('User').run(connection).then(function(cursor) {
+        return cursor.toArray();
+      })
+      .then((result) => {
+        console.log(result);
+      });
+    });
+
+
+  },
   pull: (settings) => {
     let tunnel = require('tunnel-ssh');
 
@@ -232,6 +279,8 @@ let runTask = function runTask(options = {}) {
     //
   }, options);
 
+  argv.merge = !!opts.merge;
+
   // Need to do this because Object.assign is not recursive:
   opts.tunnel = Object.assign(tunnelConfig, opts.tunnel);
 
@@ -242,7 +291,7 @@ let runTask = function runTask(options = {}) {
     opts.remoteDb = remoteDbList ? opts.remoteDb : opts.remoteDb[0];
   }
 
-  let questions = [
+  let required = [
     {
       name: 'tunnel.username',
       message: 'ssh tunnel username?',
@@ -283,6 +332,15 @@ let runTask = function runTask(options = {}) {
     },
   ];
 
+  let questions = [...required];
+
+  questions.push({
+    name: 'confirmOverwrite',
+    type: 'confirm',
+    message: 'You are about to overwrite tables in your database. Old data will not be preserved. You sure?',
+    when: !argv.merge,
+  });
+
   inquirer.prompt(questions)
   .then((answers) => {
     opts = mergeOptions(opts, answers);
@@ -293,7 +351,11 @@ let runTask = function runTask(options = {}) {
       return console.log(`Cannot run db task ${argv.task}`);
     }
 
-    questions.forEach((item) => {
+    if (!argv.merge && !answers.confirmOverwrite) {
+      return console.log(chalk.red('Okay, not going to continue'));
+    }
+
+    required.forEach((item) => {
       if (!opts[item.name]) {
         stop = true;
         console.log(chalk.red(`The ${item.name} setting is required.`));

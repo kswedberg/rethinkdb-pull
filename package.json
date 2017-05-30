@@ -16,6 +16,7 @@
     "fs-extra": "^3.0.0",
     "globby": "^6.1.0",
     "inquirer": "^3.0.6",
+    "rethinkdb": "^2.3.3",
     "tunnel-ssh": "^4.1.2"
   },
   "devDependencies": {
