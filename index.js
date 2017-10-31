@@ -372,8 +372,8 @@ let runTask = function runTask(options = {}) {
       return console.log('Cannot continue');
     }
 
-    opts.remotePwdFile = path.join(opts.tempDir, `${opts.remoteDb}.txt`);
-    opts.localPwdFile = path.join(opts.tempDir, `${opts.localDb}.txt`);
+    opts.remotePwdFile = path.join(opts.tempDir, `${opts.remoteDb}-remote.txt`);
+    opts.localPwdFile = path.join(opts.tempDir, `${opts.localDb}-local.txt`);
 
     fs.ensureDir(opts.tempDir)
     .then(() => {
