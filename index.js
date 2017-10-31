@@ -133,7 +133,7 @@ let dropOrMergeTable = (connected, table) => {
       return console.log(chalk.yellow(`\nRemoved ${table} table`));
     })
     .catch((args) => {
-      console.error(chalk.red('\nCould not remove table ${table} because it does not exist'));
+      console.error(chalk.red(`\nCould not remove table ${table} because it does not exist`));
     });
   });
 
