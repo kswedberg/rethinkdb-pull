@@ -254,6 +254,8 @@ let tasks = {
       })
       .catch((code) => {
         console.log(`Process failed with code ${code}`);
+
+        return clean(settings);
       });
 
     });
