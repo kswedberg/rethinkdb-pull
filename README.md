@@ -9,7 +9,6 @@
 
 * rethinkdb: The Python version (`sudo pip install rethinkdb`)
 * node.js >= 4
-*
 
 ## Usage
 

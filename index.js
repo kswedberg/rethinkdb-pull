@@ -17,7 +17,7 @@ var argv = require('yargs')
 }).argv;
 
 
-let mergeOptions = (opts, answers) => {
+let mergeOptionsWithAnswers = (opts, answers) => {
   opts.remoteDb = opts.remoteDb || answers.remoteDb || process.env.REMOTE_DB_NAME;
   opts.localDb = opts.localDb || answers.localDb || process.env.DB_NAME;
   opts.remotePwd = opts.remotePwd || answers.remotePwd || process.env.REMOTE_DB_ADMIN_PASSWORD;
@@ -131,8 +131,12 @@ let dropOrMergeTable = (connected, table) => {
     .run(conn)
     .then(function(cursor) {
       return console.log(chalk.yellow(`\nRemoved ${table} table`));
+    })
+    .catch((args) => {
+      console.error(chalk.red('\nCould not remove table ${table} because it does not exist'));
     });
   });
+
 };
 
 let restore = (settings) => {
@@ -343,7 +347,7 @@ let runTask = function runTask(options = {}) {
 
   inquirer.prompt(questions)
   .then((answers) => {
-    opts = mergeOptions(opts, answers);
+    opts = mergeOptionsWithAnswers(opts, answers);
 
     let stop = false;
 
