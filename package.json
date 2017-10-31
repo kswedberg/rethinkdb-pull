@@ -1,6 +1,6 @@
 {
   "name": "rethinkdb-pull",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Pull remote rethink database and overwrite local",
   "main": "index.js",
   "scripts": {
