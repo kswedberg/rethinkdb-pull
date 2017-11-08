@@ -135,8 +135,41 @@ let dropOrMergeTable = (connected, table) => {
     .catch((args) => {
       console.error(chalk.red(`\nCould not remove table ${table} because it does not exist`));
     });
+};
+
+const createDb = (settings) => {
+  let connected = r.connect({
+    db: settings.localDb,
+    password: settings.localPwd
   });
 
+  return connected
+  .then((connection) => {
+    return r.dbList()
+    .run(connection)
+    .then((dbs) => {
+      return {
+        connection,
+        hasDb: dbs.includes(settings.localDb),
+      };
+    });
+  })
+  .then(({connection, hasDb}) => {
+    if (hasDb) {
+      return connection;
+    }
+
+    console.log('Creating', settings.localDb);
+
+    return r
+    .dbCreate(settings.localDb)
+    .run(connection)
+    .then(() => {
+      connection.use(settings.localDb);
+
+      return connection;
+    });
+  });
 };
 
 let restore = (settings) => {
