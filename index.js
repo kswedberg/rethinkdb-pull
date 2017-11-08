@@ -254,9 +254,35 @@ let clean = (settings) => {
 let tasks = {
   test: (settings) => {
 
-    r.connect({
+    return r.connect({
       db: settings.localDb,
       password: settings.localPwd
+    })
+    .then((connection) => {
+      return r.dbList()
+      .run(connection)
+      .then((dbs) => {
+        return {
+          connection,
+          hasDb: dbs.includes(settings.localDb),
+        };
+      });
+    })
+    .then(({connection, hasDb}) => {
+      if (hasDb) {
+        return connection;
+      }
+
+      console.log('Creating', settings.localDb);
+
+      return r
+      .dbCreate(settings.localDb)
+      .run(connection)
+      .then(() => {
+        connection.use(settings.localDb);
+
+        return connection;
+      });
     })
     .then((connection) => {
       r.table('User').run(connection).then(function(cursor) {
@@ -265,40 +291,50 @@ let tasks = {
       .then((result) => {
         console.log(result);
       });
-    });
-
+    })
+    .catch(console.error);
 
   },
   pull: (settings) => {
     let tunnel = require('tunnel-ssh');
 
-    tunnel(settings.tunnel, function(err, tnl) {
-      if (err) {
-        console.log('Error!');
-        tnl.close();
+    return new Promise(function(resolve, reject) {
 
-        return console.log(err);
-      }
+      tunnel(settings.tunnel, function(err, tnl) {
+        if (err) {
+          console.log('Error!');
+          tnl.close();
 
-      return fs.writeFile(settings.remotePwdFile, settings.remotePwd)
-      .then(() => {
-        return fs.writeFile(settings.localPwdFile, settings.localPwd);
-      })
-      .then(() => {
-        return dump(tnl, settings);
-      })
-      .then(() => {
-        return restore(settings);
-      })
-      .then(() => {
-        return clean(settings);
-      })
-      .catch((code) => {
-        console.log(`Process failed with code ${code}`);
+          return reject(err);
+        }
 
-        return clean(settings);
+        return fs.writeFile(settings.remotePwdFile, settings.remotePwd)
+        .then(() => {
+          return fs.writeFile(settings.localPwdFile, settings.localPwd);
+        })
+        .then(() => {
+          return dump(tnl, settings);
+        })
+        .then(() => {
+          return createDb(settings);
+        })
+        .then(() => {
+          return restore(settings);
+        })
+        .then(() => {
+          return clean(settings)
+          .then(resolve);
+        })
+        .catch((err) => {
+          console.log('Process failed.');
+
+          return clean(settings)
+          .then(() => {
+            return reject(err);
+          });
+        });
+
       });
-
     });
   },
 
