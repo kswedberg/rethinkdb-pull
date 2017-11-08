@@ -343,7 +343,11 @@ let runTask = function runTask(options = {}) {
   questions.push({
     name: 'confirmOverwrite',
     type: 'confirm',
-    message: 'You are about to overwrite tables in your database. Old data will not be preserved. You sure?',
+    message: function(answers) {
+      const db = opts.localDb || answers.localDb;
+
+      return `You are about to overwrite tables in the ${db} database. Old data will not be preserved. You sure?`;
+    },
     when: !argv.merge,
   });
 
