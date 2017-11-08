@@ -22,7 +22,11 @@ rethinkdbPull({
     username: 'somebody',
     host: 'example.com'
   }
-});
+})
+.then(() => console.log('Hooray, I finished!'))
+.then(process.exit)
+.catch(process.exit);
+;
 ```
 
 Add an npm script to `package.json`:
@@ -38,6 +42,11 @@ On the command line:
 ```sh
 npm run db:pull
 ```
+## Returns
+
+The `rethinkdbPull` function returns a `Promise`.
+
+The Promise is resolved with a `settings` object, which is the result of merging per-call settings, environment variables, and default settings.
 
 ## Settings
 
