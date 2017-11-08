@@ -231,11 +231,13 @@ let restore = (settings) => {
         });
       })
       .then(() => {
-        connected.then((conn) => {
+        return connected
+        .then((conn) => {
           conn.close();
           console.log('Closing db connection:', chalk.green('Updates complete'));
         })
         .catch((err) => {
+          connected.close();
           console.error('Uh oh!');
           console.error(err);
         });
@@ -245,9 +247,11 @@ let restore = (settings) => {
 };
 
 let clean = (settings) => {
-  fs.remove(settings.tempDir)
+  return fs.remove(settings.tempDir)
   .then(() => {
     console.log(`Housekeeping: Removed ${settings.tempDir}`);
+
+    return settings;
   });
 };
 
@@ -428,7 +432,7 @@ let runTask = function runTask(options = {}) {
     when: !argv.merge,
   });
 
-  inquirer.prompt(questions)
+  return inquirer.prompt(questions)
   .then((answers) => {
     opts = mergeOptionsWithAnswers(opts, answers);
 
@@ -456,11 +460,11 @@ let runTask = function runTask(options = {}) {
     opts.remotePwdFile = path.join(opts.tempDir, `${opts.remoteDb}-remote.txt`);
     opts.localPwdFile = path.join(opts.tempDir, `${opts.localDb}-local.txt`);
 
-    fs.ensureDir(opts.tempDir)
+    return fs.ensureDir(opts.tempDir)
     .then(() => {
-      tasks[task](opts);
       console.log(chalk.cyan(`Running ${task}...`));
 
+      return tasks[task](opts);
     });
 
   });
