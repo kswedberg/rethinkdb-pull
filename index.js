@@ -110,7 +110,9 @@ let dump = (tnl, settings) => {
       }
 
       if (code) {
-        reject(code);
+        const err = new Error(`dump function: ${code}`);
+
+        reject(err);
       } else {
         resolve();
       }
@@ -213,7 +215,9 @@ let restore = (settings) => {
             rdb.on('close', (code) => {
 
               if (code) {
-                reject(code);
+                const err = new Error(`restore function: ${code}`);
+
+                reject(err);
               } else {
                 console.log(chalk.cyan(`Imported ${table} into ${db}`));
                 resolve();
