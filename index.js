@@ -127,16 +127,20 @@ let dropOrMergeTable = (connected, table) => {
     });
   }
 
+  console.log(chalk.cyan(`\nPreparing to remove ${table} table`));
+
   return connected
   .then((conn) => {
     return r.tableDrop(table)
     .run(conn)
     .then(function(cursor) {
-      return console.log(chalk.yellow(`\nRemoved ${table} table`));
-    })
-    .catch((args) => {
-      console.error(chalk.red(`\nCould not remove table ${table} because it does not exist`));
+      return console.log(chalk.cyan(`\nRemoved ${table} table`));
     });
+  })
+  .catch((args) => {
+    console.error(chalk.red(`\nCould not remove table ${table} because it does not exist`));
+  });
+
 };
 
 const createDb = (settings) => {
@@ -181,7 +185,7 @@ let restore = (settings) => {
   return decompress(settings.archive, settings.tempDir, {
     plugins: [decompressTargz()]
   }).then(() => {
-    console.log(chalk.cyan(`Decompressed ${settings.archive}`));
+    console.log(chalk.yellow(`Decompressed ${settings.archive}`));
   })
   .then(() => {
     return glob([
@@ -219,7 +223,7 @@ let restore = (settings) => {
 
                 reject(err);
               } else {
-                console.log(chalk.cyan(`Imported ${table} into ${db}`));
+                console.log(chalk.yellow(`Imported ${table} into ${db}`));
                 resolve();
               }
             });
@@ -229,7 +233,7 @@ let restore = (settings) => {
       .then(() => {
         connected.then((conn) => {
           conn.close();
-          console.log(chalk.green('Updates complete'));
+          console.log('Closing db connection:', chalk.green('Updates complete'));
         })
         .catch((err) => {
           console.error('Uh oh!');
@@ -418,8 +422,9 @@ let runTask = function runTask(options = {}) {
 
     fs.ensureDir(opts.tempDir)
     .then(() => {
-      console.log(chalk.yellow(`Running ${task}...`));
       tasks[task](opts);
+      console.log(chalk.cyan(`Running ${task}...`));
+
     });
 
   });
