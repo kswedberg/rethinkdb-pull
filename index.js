@@ -120,6 +120,13 @@ let dump = (tnl, settings) => {
   });
 };
 
+let saveFetchedFile = (settings) => {
+  return fs.copy(settings.archive, settings.fetchToPath)
+  .then(() => {
+    return settings;
+  });
+};
+
 let dropOrMergeTable = (connected, table) => {
   if (argv.merge) {
     return Promises.try(() => {
@@ -312,13 +319,26 @@ let tasks = {
           return reject(err);
         }
 
-        return fs.writeFile(settings.remotePwdFile, settings.remotePwd)
+        const pulling = fs.writeFile(settings.remotePwdFile, settings.remotePwd)
         .then(() => {
           return fs.writeFile(settings.localPwdFile, settings.localPwd);
         })
         .then(() => {
           return dump(tnl, settings);
-        })
+        });
+
+        if (settings.fetchOnly) {
+          return pulling
+          .then(() => {
+            return saveFetchedFile(settings);
+          })
+          .then(() => {
+            return clean(settings)
+            .then(resolve);
+          });
+        }
+
+        return pulling
         .then(() => {
           return createDb(settings);
         })
@@ -358,6 +378,9 @@ let runTask = function runTask(options = {}) {
     tempDir: '/tmp',
     includeTables: [],
     excludeTables: [],
+    force: false,
+    fetchOnly: false,
+    fetchToPath: '/tmp/rethink_dump.tar.gz',
     tunnel: {},
     // localDb: '',
     // localPwd: '',
@@ -409,7 +432,7 @@ let runTask = function runTask(options = {}) {
       type: 'input',
       message: 'Which local DB do you want to overwrite?',
       default: process.env.DB_NAME || '',
-      when: !opts.localDb
+      when: !opts.localDb && !opts.fetchOnly && !opts.force
     },
     {
       name: 'localPwd',
@@ -420,29 +443,41 @@ let runTask = function runTask(options = {}) {
   ];
 
   let questions = [...required];
+  let other = [
+    {
+      name: 'confirmOverwrite',
+      type: 'confirm',
+      message: function(answers) {
+        const db = opts.localDb || answers.localDb;
 
-  questions.push({
-    name: 'confirmOverwrite',
-    type: 'confirm',
-    message: function(answers) {
-      const db = opts.localDb || answers.localDb;
-
-      return `You are about to overwrite tables in the ${db} database. Old data will not be preserved. You sure?`;
+        return `You are about to overwrite tables in the ${db} database. Old data will not be preserved. You sure?`;
+      },
+      when: !argv.merge && !opts.fetchOnly && !opts.force,
     },
-    when: !argv.merge,
-  });
+    {
+      name: 'confirmFetchOnly',
+      type: 'confirm',
+      message: `Do you really want to save the remote db to the following file?
+${opts.fetchToPath}
+`,
+      when: opts.fetchOnly && !opts.force
+    }
+  ];
+
+  questions.push(...other);
 
   return inquirer.prompt(questions)
   .then((answers) => {
     opts = mergeOptionsWithAnswers(opts, answers);
 
     let stop = false;
+    let bail = opts.fetchOnly ? !answers.confirmFetchOnly : (!argv.merge && !answers.confirmOverwrite);
 
     if (!tasks[argv.task]) {
       return console.log(`Cannot run db task ${argv.task}`);
     }
 
-    if (!argv.merge && !answers.confirmOverwrite) {
+    if (bail) {
       return console.log(chalk.red('Okay, not going to continue'));
     }
 

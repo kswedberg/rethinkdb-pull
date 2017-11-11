@@ -26,7 +26,6 @@ rethinkdbPull({
 .then(() => console.log('Hooray, I finished!'))
 .then(process.exit)
 .catch(process.exit);
-;
 ```
 
 Add an npm script to `package.json`:
@@ -61,7 +60,9 @@ let settings = {
   tempDir: '/tmp',
   includeTables: [],
   excludeTables: [],
-  merge: false, // When true, does not drop the table before importing.
+  force: false, // if true, skips inquirer prompts that would otherwise appear
+  fetchOnly: false, // [ *see more below ]
+  fetchToPath: '/tmp/rethink_dump.tar.gz', // if fetchOnly is true, path of the tarball to save
   // See https://github.com/agebrock/tunnel-ssh for details on tunnel settings:
   tunnel: {
     username: undefined,
@@ -75,6 +76,9 @@ let settings = {
   }
 }
 ```
+
+\* `fetchOnly` may be useful as a backup strategy.
+  If set to `true`, the function call will only `dump` the remote db, NOT `restore` into a local db. The resulting file will be saved as:  `[tempDir]/[timestamp]/rethink_dump.tar.gz`.
 
 ### Database and password settings
 * If you don't include values for `localDb`, `localPwd`, `remoteDb`, or `remotePwd`, you will be prompted to do so.
