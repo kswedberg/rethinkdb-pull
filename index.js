@@ -182,12 +182,20 @@ const createDb = (settings) => {
 
       return connection;
     });
+  })
+  .then((connection) => {
+    connection.close();
   });
 };
 
 let restore = (settings) => {
   const decompress = require('decompress');
   const decompressTargz = require('decompress-targz');
+
+  let connected = r.connect({
+    db: settings.localDb,
+    password: settings.localPwd
+  });
 
   return decompress(settings.archive, settings.tempDir, {
     plugins: [decompressTargz()]
@@ -199,11 +207,6 @@ let restore = (settings) => {
       path.join(settings.tempDir, '**/*.json')
     ])
     .then((files) => {
-      let connected = r.connect({
-        db: settings.localDb,
-        password: settings.localPwd
-      });
-
       return Promises.try(() => {
         return setImportArgs(settings, files);
       })
@@ -236,19 +239,22 @@ let restore = (settings) => {
             });
           });
         });
-      })
-      .then(() => {
-        return connected
-        .then((conn) => {
-          conn.close();
-          console.log('Closing db connection:', chalk.green('Updates complete'));
-        })
-        .catch((err) => {
-          connected.close();
-          console.error('Uh oh!');
-          console.error(err);
-        });
       });
+    });
+  })
+  .then(() => {
+    return connected
+    .then((conn) => {
+      conn.close();
+      console.log('Closing db connection:', chalk.green('Updates complete'));
+
+      return settings;
+    })
+    .catch((err) => {
+      console.error('Uh oh!');
+      console.error(err);
+
+      return connected.then((conn) => conn.close());
     });
   });
 };
