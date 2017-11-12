@@ -23,9 +23,7 @@ rethinkdbPull({
     host: 'example.com'
   }
 })
-.then(() => console.log('Hooray, I finished!'))
-.then(process.exit)
-.catch(process.exit);
+.then(() => console.log('Hooray, I finished!'));
 ```
 
 Add an npm script to `package.json`:
