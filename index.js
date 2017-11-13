@@ -128,11 +128,6 @@ let saveFetchedFile = (settings) => {
 };
 
 let dropOrMergeTable = (connected, table) => {
-  if (argv.merge) {
-    return Promises.try(() => {
-      return console.log(`\nPreparing to merge data into ${table} table…`);
-    });
-  }
 
   console.log(chalk.cyan(`\nPreparing to remove ${table} table`));
 
@@ -395,8 +390,6 @@ let runTask = function runTask(options = {}) {
     //
   }, options);
 
-  argv.merge = !!opts.merge;
-
   // Need to do this because Object.assign is not recursive:
   opts.tunnel = Object.assign(tunnelConfig, opts.tunnel);
 
@@ -458,7 +451,7 @@ let runTask = function runTask(options = {}) {
 
         return `You are about to overwrite tables in the ${db} database. Old data will not be preserved. You sure?`;
       },
-      when: !argv.merge && !opts.fetchOnly && !opts.force,
+      when: !opts.fetchOnly && !opts.force,
     },
     {
       name: 'confirmFetchOnly',
@@ -477,7 +470,7 @@ ${opts.fetchToPath}
     opts = mergeOptionsWithAnswers(opts, answers);
 
     let stop = false;
-    let bail = opts.fetchOnly ? !answers.confirmFetchOnly : (!argv.merge && !answers.confirmOverwrite);
+    let bail = opts.fetchOnly ? !answers.confirmFetchOnly && !opts.force : !answers.confirmOverwrite && !opts.force;
 
     if (!tasks[argv.task]) {
       return console.log(`Cannot run db task ${argv.task}`);
