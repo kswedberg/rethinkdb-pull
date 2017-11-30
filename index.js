@@ -17,6 +17,41 @@ var argv = require('yargs')
 }).argv;
 
 
+let setOpts = (options) => {
+  let tunnelConfig =  {
+    port: 22,
+    dstHost: '127.0.0.1',
+    dstPort: 28015,
+    localHost: '127.0.0.1',
+    localPort: 9999,
+    keepAlive: true,
+  };
+  let opts = Object.assign({
+    tempDir: '/tmp',
+    includeTables: [],
+    excludeTables: [],
+    force: false,
+    fetchOnly: false,
+    fetchToPath: '/tmp/rethink_dump.tar.gz',
+    tunnel: {},
+    // localDb: '',
+    // localPwd: '',
+    // remoteDb: '',
+    // remotePwd: '',
+    //
+  }, options);
+
+  // Need to do this because Object.assign is not recursive:
+  opts.tunnel = Object.assign(tunnelConfig, opts.tunnel);
+
+  if (Array.isArray(opts.remoteDb)) {
+    opts.remoteDbList = opts.remoteDb.length > 1;
+    opts.remoteDb = opts.remoteDbList ? opts.remoteDb : opts.remoteDb[0];
+  }
+
+  return opts;
+};
+
 let mergeOptionsWithAnswers = (opts, answers) => {
   opts.remoteDb = opts.remoteDb || answers.remoteDb || process.env.REMOTE_DB_NAME;
   opts.localDb = opts.localDb || answers.localDb || process.env.DB_NAME;
@@ -34,6 +69,9 @@ let mergeOptionsWithAnswers = (opts, answers) => {
 
   opts.tempDir = path.join(opts.tempDir, `${+new Date()}`);
   opts.archive = path.join(opts.tempDir, 'rethink_dump.tar.gz');
+
+  opts.remotePwdFile = path.join(opts.tempDir, `${opts.remoteDb}-remote.txt`);
+  opts.localPwdFile = path.join(opts.tempDir, `${opts.localDb}-local.txt`);
 
   return opts;
 };
@@ -81,7 +119,7 @@ let setImportArgs = (settings, files) => {
 let dump = (tnl, settings) => {
   let args = [
     'dump',
-    '-c', `localhost:${settings.tunnel.localPort}`,
+    '-c', `localhost:${settings.port || settings.tunnel.localPort}`,
     '-e', settings.remoteDb,
     '-f', settings.archive,
     '--password-file', settings.remotePwdFile
@@ -140,7 +178,7 @@ let dropOrMergeTable = (connected, table) => {
     });
   })
   .catch((args) => {
-    console.error(chalk.red(`\nCould not remove table ${table} because it does not exist`));
+    console.log(chalk.yellow(`\nCould not remove table ${table} because it does not exist`));
   });
 
 };
@@ -264,6 +302,7 @@ let clean = (settings) => {
 };
 
 let tasks = {
+
   test: (settings) => {
 
     return r.connect({
@@ -365,40 +404,11 @@ let tasks = {
 
 };
 
+
 let runTask = function runTask(options = {}) {
   let task = argv.task || 'pull';
-  let tunnelConfig =  {
-    port: 22,
-    dstHost: '127.0.0.1',
-    dstPort: 28015,
-    localHost: '127.0.0.1',
-    localPort: 9999,
-    keepAlive: true,
-  };
-  let opts = Object.assign({
-    tempDir: '/tmp',
-    includeTables: [],
-    excludeTables: [],
-    force: false,
-    fetchOnly: false,
-    fetchToPath: '/tmp/rethink_dump.tar.gz',
-    tunnel: {},
-    // localDb: '',
-    // localPwd: '',
-    // remoteDb: '',
-    // remotePwd: '',
-    //
-  }, options);
 
-  // Need to do this because Object.assign is not recursive:
-  opts.tunnel = Object.assign(tunnelConfig, opts.tunnel);
-
-  let remoteDbList = false;
-
-  if (Array.isArray(opts.remoteDb)) {
-    remoteDbList = opts.remoteDb.length > 1;
-    opts.remoteDb = remoteDbList ? opts.remoteDb : opts.remoteDb[0];
-  }
+  let opts = setOpts(options);
 
   let required = [
     {
@@ -414,10 +424,10 @@ let runTask = function runTask(options = {}) {
     {
       name: 'remoteDb',
       message: 'Which remote DB do you want to pull?',
-      type: remoteDbList ? 'list' : 'input',
-      choices: remoteDbList ? opts.remoteDb : null,
+      type: opts.remoteDbList ? 'list' : 'input',
+      choices: opts.remoteDbList ? opts.remoteDb : null,
       when: () => {
-        return remoteDbList || (task === 'pull' && !process.env.REMOTE_DB_NAME && !opts.remoteDb);
+        return opts.remoteDbList || (task === 'pull' && !process.env.REMOTE_DB_NAME && !opts.remoteDb);
       },
     },
     {
@@ -491,9 +501,6 @@ ${opts.fetchToPath}
       return console.log('Cannot continue');
     }
 
-    opts.remotePwdFile = path.join(opts.tempDir, `${opts.remoteDb}-remote.txt`);
-    opts.localPwdFile = path.join(opts.tempDir, `${opts.localDb}-local.txt`);
-
     return fs.ensureDir(opts.tempDir)
     .then(() => {
       console.log(chalk.cyan(`Running ${task}...`));
@@ -505,3 +512,72 @@ ${opts.fetchToPath}
 };
 
 module.exports = runTask;
+
+const setLocalOpts = (options) => {
+  let opts = setOpts(options);
+
+  opts.remoteDb = opts.db || opts.fromDb || opts.remoteDb;
+  opts.localDb = opts.toDb || opts.localDb;
+  let settings = mergeOptionsWithAnswers(opts, {});
+
+  settings = Object.assign({
+    force: true,
+    port: '28015',
+  }, settings);
+
+  settings.remotePwd = settings.pwd || settings.localPwd;
+
+  return settings;
+};
+
+const dumpLocal = (settings) => {
+  return fs.ensureDir(settings.tempDir)
+  .then(() => {
+    fs.writeFile(settings.remotePwdFile, settings.remotePwd);
+  })
+  .then(() => {
+    return fs.writeFile(settings.localPwdFile, settings.localPwd);
+  })
+  .then(() => {
+    return dump(undefined, settings);
+  });
+};
+
+// BACKUP LOCAL: backs up db from local rethinkdb server to a path on the local filesystem
+module.exports.backupLocal = (options = {}) => {
+  let settings = setLocalOpts(options);
+
+  settings.localDb = 'notused';
+
+  return dumpLocal(settings)
+  .then(() => {
+    return saveFetchedFile(settings);
+  })
+  .then(() => {
+    return clean(settings);
+  })
+  .catch(console.error);
+};
+
+// SYNC LOCAL: syncs from one db to another on the same server
+module.exports.syncLocal = (options = {}) => {
+  let settings = setLocalOpts(options);
+
+  // return console.log(settings);
+  return dumpLocal(settings)
+  .then(() => {
+    return createDb(settings);
+  })
+  .then(() => {
+    return restore(settings);
+  })
+  .then(() => {
+    return clean(settings);
+  })
+  .catch((err) => {
+    console.log('Process failed.');
+    console.error(err);
+
+    return clean(settings);
+  });
+};
