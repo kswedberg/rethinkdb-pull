@@ -547,6 +547,10 @@ const dumpLocal = (settings) => {
 module.exports.backupLocal = (options = {}) => {
   let settings = setLocalOpts(options);
 
+  // backupLocal uses a local database
+  // but the dump() function above uses settings.remoteDb.
+  // so we need to ensure that we're using settings.localDb if .db or .fromDb not set
+  settings.remoteDb = settings.db || settings.fromDb || settings.localDb;
   settings.localDb = 'notused';
 
   return dumpLocal(settings)
