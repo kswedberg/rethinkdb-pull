@@ -93,6 +93,7 @@ let setImportArgs = (settings, files) => {
 
     let args = [
       'import',
+      '-c', `${settings.dbHost}:${settings.port || settings.tunnel.dstPort}`,
       '-f', file,
       '--password-file', settings.localPwdFile,
       '--table', `${db}.${table}`,
