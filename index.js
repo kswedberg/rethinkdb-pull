@@ -118,6 +118,14 @@ let setImportArgs = (settings, files) => {
   });
 };
 
+const connectDb = (settings) => {
+  return r.connect({
+    host: settings.dbHost,
+    db: settings.localDb,
+    password: settings.localPwd
+  });
+};
+
 let dump = (tnl, settings) => {
   let args = [
     'dump',
@@ -186,10 +194,7 @@ let dropOrMergeTable = (connected, table) => {
 };
 
 const createDb = (settings) => {
-  let connected = r.connect({
-    db: settings.localDb,
-    password: settings.localPwd
-  });
+  let connected = connectDb(settings);
 
   return connected
   .then((connection) => {
@@ -227,11 +232,7 @@ let restore = (settings) => {
   const decompress = require('decompress');
   const decompressTargz = require('decompress-targz');
 
-  let connected = r.connect({
-    host: settings.dbHost,
-    db: settings.localDb,
-    password: settings.localPwd
-  });
+  let connected = connectDb(settings);
 
   return decompress(settings.archive, settings.tempDir, {
     plugins: [decompressTargz()]
@@ -308,10 +309,7 @@ let tasks = {
 
   test: (settings) => {
 
-    return r.connect({
-      db: settings.localDb,
-      password: settings.localPwd
-    })
+    return connectDb(settings)
     .then((connection) => {
       return r.dbList()
       .run(connection)
