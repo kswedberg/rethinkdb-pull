@@ -34,6 +34,7 @@ let setOpts = (options) => {
     fetchOnly: false,
     fetchToPath: '/tmp/rethink_dump.tar.gz',
     tunnel: {},
+    dbHost: 'localhost'
     // localDb: '',
     // localPwd: '',
     // remoteDb: '',
@@ -119,7 +120,7 @@ let setImportArgs = (settings, files) => {
 let dump = (tnl, settings) => {
   let args = [
     'dump',
-    '-c', `localhost:${settings.port || settings.tunnel.localPort}`,
+    '-c', `${settings.dbHost}:${settings.port || settings.tunnel.localPort}`,
     '-e', settings.remoteDb,
     '-f', settings.archive,
     '--password-file', settings.remotePwdFile
@@ -226,6 +227,7 @@ let restore = (settings) => {
   const decompressTargz = require('decompress-targz');
 
   let connected = r.connect({
+    host: settings.dbHost,
     db: settings.localDb,
     password: settings.localPwd
   });
@@ -522,7 +524,7 @@ const setLocalOpts = (options) => {
 
   settings = Object.assign({
     force: true,
-    port: '28015',
+    port: 28015,
   }, settings);
 
   settings.remotePwd = settings.pwd || settings.localPwd;
