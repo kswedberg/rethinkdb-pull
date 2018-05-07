@@ -10,7 +10,7 @@ const glob = require('globby');
 
 dotenv.config();
 
-var argv = require('yargs')
+let argv = require('yargs')
 .option('task', {
   alias: 't',
   default: 'pull'
@@ -106,7 +106,9 @@ let setImportArgs = (settings, files) => {
         args.push('--pkey', json.primary_key);
       }
     })
-    .catch(() => {})
+    .catch(() => {
+      // keep going.
+    })
     .then(() => {
       args.push('--force');
 
@@ -137,7 +139,7 @@ let dump = (tnl, settings) => {
   let rdb = spawn('rethinkdb', args);
   let line = '';
 
-  return new Promise(function(resolve, reject) {
+  return new Promise((resolve, reject) => {
     rdb.stdout.on('data', (data) => {
       if (line.slice(0, 1) === '[') {
         process.stdout.clearLine();
@@ -183,7 +185,7 @@ let dropOrMergeTable = (connected, table) => {
   .then((conn) => {
     return r.tableDrop(table)
     .run(conn)
-    .then(function(cursor) {
+    .then((cursor) => {
       return console.log(chalk.cyan(`\nRemoved ${table} table`));
     });
   })
@@ -252,7 +254,7 @@ let restore = (settings) => {
         .then(() => {
           let rdb = spawn('rethinkdb', args);
 
-          return new Promise(function(resolve, reject) {
+          return new Promise((resolve, reject) => {
             rdb.stdout.on('data', (data) => {
               let line = data.toString();
 
@@ -337,7 +339,7 @@ let tasks = {
       });
     })
     .then((connection) => {
-      r.table('User').run(connection).then(function(cursor) {
+      return r.table('User').run(connection).then((cursor) => {
         return cursor.toArray();
       })
       .then((result) => {
@@ -350,9 +352,9 @@ let tasks = {
   pull: (settings) => {
     let tunnel = require('tunnel-ssh');
 
-    return new Promise(function(resolve, reject) {
+    return new Promise((resolve, reject) => {
 
-      tunnel(settings.tunnel, function(err, tnl) {
+      tunnel(settings.tunnel, (err, tnl) => {
         if (err) {
           console.log('Error!');
           tnl.close();

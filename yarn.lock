@@ -366,9 +366,9 @@ escape-string-regexp@^1.0.2, escape-string-regexp@^1.0.5:
   version "1.0.5"
   resolved "https://registry.yarnpkg.com/escape-string-regexp/-/escape-string-regexp-1.0.5.tgz#1b61c0562190a8dff6ae3bb2cf0200ca130b86d4"
 
-eslint-config-kswedberg@^2.1.0:
-  version "2.1.0"
-  resolved "https://registry.yarnpkg.com/eslint-config-kswedberg/-/eslint-config-kswedberg-2.1.0.tgz#9769e924bc2855ceb7daccdcabe5b2078f759f08"
+eslint-config-kswedberg@^2.2.10:
+  version "2.2.10"
+  resolved "https://registry.yarnpkg.com/eslint-config-kswedberg/-/eslint-config-kswedberg-2.2.10.tgz#98eff47954e9ba139f68474435ad5856e0e038bd"
 
 eslint-scope@^3.7.1:
   version "3.7.1"
