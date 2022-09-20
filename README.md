@@ -1,5 +1,8 @@
 # RethinkDB Pull
 
+**NOTE: This repo is no longer actively developed.** Use at your own risk. If you need something like this, my [db-backup-restore](https://github.com/kswedberg/db-backup-restore) repo might help.
+
+## Features
 * Prompts for local and remote db/password info if none provided in `options` argument or `.env` file
 * Uses ssh-tunnel to connect to a remote RethinkDB server
 * Downloads a compressed file containing a database from the server
